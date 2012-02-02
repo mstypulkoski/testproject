@@ -1,0 +1,293 @@
+<?php
+
+include_once('oa_portal.forms.inc');
+
+/* MS:  Adds CSS + JS to module for form layout */
+function oa_portal_init() {
+	drupal_add_css(drupal_get_path('module', 'oa_portal') . '/css/forms.css');
+	//drupal_add_js(drupal_get_path('module', 'oa_portal') . '/js/forms.js');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function oa_portal_menu() {
+  $items = array();
+  
+  $items['admin/portal'] = array(
+    'title' => 'OA Portal Admin', 
+    'page callback' => 'oa_portal_admin', 
+    'access arguments' => array('access content'), 
+  );
+  
+  $p = oa_portal_api();
+  foreach ($p AS $pk => $phase) {
+    foreach ($phase AS $sk => $section) {
+      if (substr($sk, 0, 1) !== '#') {
+        $items[$pk .'/'. $sk] = array(
+          'type' => MENU_CALLBACK,
+          'title' => $section['#title'],
+          'page callback' => 'drupal_get_form',
+          'page arguments' => array('oa_portal_'. $pk .'_'. $sk .'_form'),
+          'access callback' => 'oa_portal_access',
+          'access arguments' => array($pk, $sk),
+        );
+      }
+    }
+  }
+
+  return $items;
+}
+
+/**
+ * Access callback for menu items
+ */
+function oa_portal_access($phase, $section) {
+  global $user;
+return TRUE;
+  // Load portal data for user
+  
+  $p = oa_portal_api();
+  // Acceptable s
+  // Check if phase is unlocked
+  if (in_array($p[$phase]['#status'], array('', 'open'))) {
+    // Check if section has not yet been finalized
+    if (in_array($p[$phase][$section]['#status'], array('', 'rejected'))) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Menu callback for admin page
+ */
+function oa_portal_admin() {
+  $p = oa_portal_api();
+  foreach ($p AS $pk => $phase) {
+    $output .= '<h3>'. $phase['#title'] .'</h3>';
+    $rows = array();
+    foreach ($phase AS $sk => $section) {
+      if (substr($sk, 0, 1) !== '#') {
+        $rows[] = array(l($section['#title'], $pk .'/'. $sk), 'oa_portal_'. $pk .'_'. $sk .'_form', function_exists('oa_portal_'. $pk .'_'. $sk .'_form'), function_exists('oa_portal_'. $pk .'_'. $sk .'_form_validate'), function_exists('oa_portal_'. $pk .'_'. $sk .'_form_submit'));
+       if (!function_exists('oa_portal_'. $pk .'_'. $sk .'_form')) {
+         $code .= '/**
+ * Form callback for '. $section['#title'] .'
+ */
+/*
+function oa_portal_'. $pk .'_'. $sk .'_form($form_state) {
+  $form = array();
+  $form[\'#description\'] = t(\'\');
+  
+  // 
+  $form[\'\'] = fieldset(\'\');
+  $form[\'\'][\'\'] = textfield(\'\');
+  $form[\'\'][\'\'] = textarea(\'\');
+  $form[\'\'][\'\'] = array(
+    \'#type\' => \'\',
+    \'#title\' => t(\'\'),
+    \'#options\' => array(\'opt1\' => \'Opt 1\'),
+    \'#required\' => TRUE,
+  );
+
+  oa_portal_submit(&$form);
+  return $form;
+}
+*/';
+         $code .= '/**
+ * Form validation callback for '. $section['#title'] .'
+ */
+/*
+function oa_portal_'. $pk .'_'. $sk .'_form_validate($form, &$form_state) {
+  if ($form_state[\'values\'][\'name\'] == \'\') {
+    form_set_error(\'\', t(\'You must select a name for this group of settings.\'));
+  }
+}
+*/
+
+';
+
+         $code .= '/**
+ * Form submission callback for '. $section['#title'] .'
+ */
+/*
+function oa_portal_'. $pk .'_'. $sk .'_form_submit($form, &$form_state) {
+
+}
+*/
+';
+        }
+
+      }
+    }
+    $output .= theme('table', array('Section', 'Form callback', 'form', 'validation', 'submission'), $rows);
+  }
+
+  $output .= '<pre>'. $code .'</pre>';
+  return $output;
+}
+
+/**
+ * 
+ */
+function oa_portal_api() {
+  $p = array();
+  $p['p1'] = array(
+    '#title' => t('Phase 1'),
+    '#status' => '',
+    'contact' => array(
+      '#title' => t('Contact Information'),
+      '#dependencies' => array(),
+      '#status' => 'closed',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'application' => array(
+      '#title' => t('Application'),
+      '#dependencies' => array(),
+      '#status' => 'open',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'checklist' => array(
+      '#title' => t('Checklist'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+  );
+  $p['p2'] = array(
+    '#title' => t('Phase 2'),
+    '#status' => '',
+    'professional_orgs' => array(
+      '#title' => t('Professional Organizations'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'licensure_certs' => array(
+      '#title' => t('Licensure Certifications'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'background_reference' => array(
+      '#title' => t('Background/Reference Check'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'capabilities' => array(
+      '#title' => t('Capabilities Questionnaire'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'policies' => array(
+      '#title' => t('Policies & Agreements'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'medical' => array(
+      '#title' => t('Medical Authorization and Disclosures'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'competency' => array(
+      '#title' => t('Competency Test'),
+      '#status' => '',
+    ),
+  );
+  $p['p3'] = array(
+    '#title' => t('Phase 3'),
+    '#status' => '',
+    'paycheque' => array(
+      '#title' => t('Paycheque Method'),
+      '#phase' => 3,
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'w4' => array(
+      '#title' => t('W4'),
+      '#phase' => 3,
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'i9' => array(
+      '#title' => t('I-9'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'eeo' => array(
+      '#title' => t('EEO Form'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+    'work_policy' => array(
+      '#title' => t('Work Policy'),
+      '#dependencies' => array(),
+      '#status' => '',
+      '#data' => array(),
+      '#docs' => array(),
+    ),
+  );
+  return $p;
+}
+
+
+/**
+ * Soap client
+ */
+function oa_portal_soap($method, $params) {
+  $wsdl = 'http://sena-demo.net:46200/idcws/GenericSoapPort?WSDL';
+  $options = array('use' => 'encoded', 'style' => 'rpc');
+  $client = soapclient_init_client($wsdl, TRUE, $options);
+
+  if (!empty($client['#error'])) {
+    drupal_set_message('Could not open connection to the web service');
+    watchdog('oa-portal-soap', 'Could not connect to web service.', array(), WATCHDOG_ERROR);
+    return FALSE;
+  }
+  $result = $client['#return']->call($method, $params);
+
+  if ($result['#error'] !== FALSE) {
+    dsm($client, $method . ' - Soap init $client after call()');
+    drupal_set_message('An error occurred. Please try again later.');
+    watchdog('oa-portal-soap', 'Could not get results from web service.', array(), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+//  dsm($result, $method . ' SOAP returning');
+  return $result['#return'];
+}
+
+/**
+ * SOAP interface for Job Search
+ */
+function oa_portal_soap_search() {
+  $params = array();
+  $results = oa_portal_soap('PING_SERVER', $params);
+  
+  if (is_array($results)) {
+    dsm($results, 'SOAP $results');
+    return $results;
+  }
+  return array();
+}
